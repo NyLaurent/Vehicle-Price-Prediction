@@ -36,9 +36,56 @@
                  
                 <header class="mb-4 border-bottom pb-3"> 
                     <h1 class="fw-bold text-dark">Vehicle Insights Dashboard</h1> 
-                    <p class="text-secondary mb-0">Exploratory Data Analysis</p> 
+                    <p class="text-secondary mb-0">Exploratory Data Analysis</p>
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Total Clients</h5>
+                                    <h2>{{ total_clients }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Districts</h5>
+                                    <h2>{{ total_districts }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-info text-white">
+                                <div class="card-body">
+                                    <h5 class="card-title">Provinces</h5>
+                                    <h2>{{ total_provinces }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </header> 
- 
+
+                <section id="rwanda_map" class="mb-5" style="padding-top: 20px;"> 
+                    <div class="card shadow-sm border-0"> 
+                        <div class="card-header bg-white border-bottom py-3"> 
+                            <span class="fw-bold">Rwanda Map - Vehicle Clients Distribution by District</span> 
+                        </div> 
+                        <div class="card-body"> 
+                            {{ map|safe }} 
+                        </div> 
+                    </div> 
+                </section>
+
+                <section id="district_summary" class="mb-5" style="padding-top: 20px;"> 
+                    <div class="card shadow-sm border-0"> 
+                        <div class="card-header bg-white border-bottom py-3"> 
+                            <span class="fw-bold">District Summary - Client Distribution</span> 
+                        </div> 
+                        <div class="card-body overflow-x-auto"> 
+                            {{ district_summary|safe }} 
+                        </div> 
+                    </div> 
+                </section>
  
                 <section id="dataset_exploration" class="mb-5" style="padding-top: 20px;"> 
                     <div class="card shadow-sm border-0"> 
@@ -46,7 +93,7 @@
                             <span class="fw-bold">Data Exploration</span> 
                         </div> 
                         <div class="card-body overflow-x-auto"> 
-                            {{ dataset_exploration|safe }} 
+                            {{ table|safe }} 
                         </div> 
                     </div> 
                 </section> 

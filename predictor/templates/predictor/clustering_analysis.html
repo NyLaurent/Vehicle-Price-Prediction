@@ -121,11 +121,21 @@
                         <div 
                             class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center"> 
                             <span class="fw-bold text-dark">Evaluation Metrics</span> 
-                            <span class="badge bg-light text-primary border border-primary"> 
-                                Silhouette Score: {{evaluations.silhouette|safe }} 
-                            </span> 
+                            <div>
+                                <span class="badge bg-success text-white border me-2"> 
+                                    Silhouette Score: {{evaluations.silhouette|safe }}
+                                </span>
+                                <span class="badge bg-info text-white border"> 
+                                    Coefficient of Variation: {{evaluations.coefficient_of_variation|safe }}%
+                                </span>
+                            </div>
                         </div> 
-                        <div class="card-body">  
+                        <div class="card-body">
+                            <h6 class="fw-bold mb-3">Coefficient of Variation by Cluster</h6>
+                            <div class="table-responsive mb-4"> 
+                                {{ evaluations.cv_details|safe }} 
+                            </div>
+                            <h6 class="fw-bold mb-3">Cluster Summary</h6>
                             <div class="table-responsive"> 
                                 {{ evaluations.summary|safe }} 
                             </div> 
