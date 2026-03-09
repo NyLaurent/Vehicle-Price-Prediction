@@ -9,110 +9,107 @@ import numpy as np
 def create_rwanda_district_map(df):
     """
     Create a Rwanda map showing vehicle client distribution by district with proper boundaries using GeoJSON.
-    Each district has a unique color, district name label, and client count displayed.
+    Uses Mapbox choropleth with Reds color scale and static text labels for district names and client counts.
     """
     # Count clients per district
     district_counts = df['district'].value_counts().reset_index()
     district_counts.columns = ['district', 'client_count']
+    district_counts['district'] = district_counts['district'].str.strip()
     
     # Load GeoJSON file
     geojson_path = os.path.join('dummy-data', 'rwanda_districts.geojson')
     with open(geojson_path, 'r', encoding='utf-8') as f:
         rwanda_geojson = json.load(f)
     
-    # Generate unique colors for each district
-    num_districts = len(district_counts)
-    colors = px.colors.qualitative.Plotly + px.colors.qualitative.Set3 + px.colors.qualitative.Pastel
-    district_colors = {district: colors[i % len(colors)] for i, district in enumerate(district_counts['district'])}
-    district_counts['color'] = district_counts['district'].map(district_colors)
-    
     # Calculate centroids for district labels
-    centroids = {}
+    centroids = []
     for feature in rwanda_geojson['features']:
-        district_name = feature['properties']['NAME_2']
+        name = feature['properties']['NAME_2'].strip()
+        feature['id'] = name
         coords = feature['geometry']['coordinates']
         
-        # Handle different geometry types
-        if feature['geometry']['type'] == 'Polygon':
-            all_coords = coords[0]
-        elif feature['geometry']['type'] == 'MultiPolygon':
-            all_coords = [coord for polygon in coords for coord in polygon[0]]
-        else:
-            continue
+        # Extract all coordinates
+        all_lons = []
+        all_lats = []
         
-        # Calculate centroid
-        lons = [coord[0] for coord in all_coords]
-        lats = [coord[1] for coord in all_coords]
-        centroids[district_name] = {
-            'lon': np.mean(lons),
-            'lat': np.mean(lats)
-        }
-    
-    # Create choropleth map with unique colors
-    fig = go.Figure()
-    
-    for _, row in district_counts.iterrows():
-        district = row['district']
-        client_count = row['client_count']
-        color = row['color']
+        def extract_coords(c_list):
+            for item in c_list:
+                if isinstance(item[0], (int, float)):
+                    all_lons.append(item[0])
+                    all_lats.append(item[1])
+                else:
+                    extract_coords(item)
         
-        # Find matching GeoJSON feature
-        for feature in rwanda_geojson['features']:
-            if feature['properties']['NAME_2'] == district:
-                fig.add_trace(go.Choropleth(
-                    geojson={"type": "FeatureCollection", "features": [feature]},
-                    locations=[district],
-                    z=[client_count],
-                    featureidkey='properties.NAME_2',
-                    colorscale=[[0, color], [1, color]],
-                    showscale=False,
-                    hovertemplate=f'<b>{district}</b><br>Clients: {client_count}<extra></extra>',
-                    marker_line_color='white',
-                    marker_line_width=1.5
-                ))
-                break
+        extract_coords(coords)
+        
+        if all_lons and all_lats:
+            centroids.append({
+                'district': name,
+                'lat': np.mean(all_lats),
+                'lon': np.mean(all_lons)
+            })
     
-    # Add district name and client count labels
-    for district, centroid in centroids.items():
-        if district in district_counts['district'].values:
-            client_count = district_counts[district_counts['district'] == district]['client_count'].values[0]
-            
-            fig.add_trace(go.Scattergeo(
-                lon=[centroid['lon']],
-                lat=[centroid['lat']],
-                text=f"<b>{district}</b><br>{client_count} clients",
-                mode='text',
-                textfont=dict(size=10, color='black', family='Arial Black'),
-                hoverinfo='skip',
-                showlegend=False
-            ))
+    centroid_df = pd.DataFrame(centroids)
     
-    # Update map layout
-    fig.update_geos(
-        fitbounds="locations",
-        visible=False,
-        showcountries=False,
-        showcoastlines=False,
-        showland=False,
-        showlakes=False
+    # Merge counts with centroids
+    label_df = pd.merge(centroid_df, district_counts, on='district', how='left')
+    label_df['client_count'] = label_df['client_count'].fillna(0).astype(int)
+    
+    # Formatted label text
+    label_df['text'] = label_df['district'] + "<br>" + label_df['client_count'].astype(str)
+    
+    # Create base choropleth map with Mapbox
+    fig = px.choropleth_mapbox(
+        district_counts,
+        geojson=rwanda_geojson,
+        locations='district',
+        color='client_count',
+        color_continuous_scale="Blues",
+        mapbox_style="carto-positron",
+        center={"lat": -1.94, "lon": 30.06},
+        zoom=7.8,
+        opacity=0.6,
+        title="<b>Rwanda Vehicle Clients Distribution by District</b>",
+        labels={'client_count': 'Total Clients'}
     )
     
+    # Add static text labels
+    fig.add_trace(go.Scattermapbox(
+        lat=label_df['lat'],
+        lon=label_df['lon'],
+        mode='text',
+        text=label_df['text'],
+        textfont={'size': 10, 'color': 'black', 'weight': 'bold'},
+        hoverinfo='none',
+        showlegend=False
+    ))
+    
+    # Update layout
     fig.update_layout(
+        margin={"r": 0, "t": 60, "l": 0, "b": 0},
+        height=800,
+        dragmode="zoom",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
         title=dict(
-            text="<b>Rwanda Vehicle Clients Distribution by District</b>",
             x=0.5,
             xanchor='center',
             font=dict(size=18, color='#2c3e50')
-        ),
-        margin={"r": 0, "t": 60, "l": 0, "b": 0},
-        height=800,
-        geo=dict(
-            scope='africa',
-            projection_type='mercator'
         )
     )
     
-    return pio.to_html(fig, full_html=False, include_plotlyjs='cdn')
+    fig.update_mapboxes(
+        center={"lat": -1.94, "lon": 30.06},
+        zoom=7.8
+    )
+    
+    fig.update_traces(
+        marker_line_width=1,
+        marker_line_color="darkblue",
+        selector=dict(type='choroplethmapbox')
+    )
+    
+    return pio.to_html(fig, full_html=False, include_plotlyjs='cdn', config={'scrollZoom': True})
 
 
 def get_district_summary_table(df):
